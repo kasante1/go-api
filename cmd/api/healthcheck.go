@@ -6,7 +6,7 @@ import (
 
 func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
 	
-	data := envelop{
+	data := envelope{
 		"status": "available",
 		"environment": app.config.env,
 		"version": version,
@@ -16,7 +16,7 @@ func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Reques
 
 	if err != nil {
 		app.logger.Println(err)
-		http.Error(w, "the server ecountered a problem and could not process your request ", http.StatusInternalServerError)
+		app.serverErrorResponse(w, r, err)
 		return
 	}
 
