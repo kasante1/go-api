@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/kasante1/go-api/internal/data"
 	"github.com/kasante1/go-api/internal/validator"
+	"errors" 
 	
 )
 
@@ -58,25 +58,24 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request) {
 
 	id, err := app.readIDParam(r)
-	if err != nil{
-	app.notFoundResponse(w, r)
+		if err != nil{
+			app.notFoundResponse(w, r)
+		return
+	}
+	
+	movie, err := app.models.Movies.Get(id)
+	if err != nil {
+	switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
 	return
 	}
 
-	movie := data.Movie{
-		ID: id,
-		CreatedAt: time.Now(),
-		Title: "Casablanca",
-		Runtime: 102,
-		Genres: []string{"drama", "romance", "war"},
-		Version: 1,
-	}
-
-
-
 	err = app.writeJson(w, http.StatusOK, envelope{"movie": movie}, nil)
 	if err != nil {
-		app.logger.Println(err)
-		app.serverErrorResponse(w, r, err)
+	app.serverErrorResponse(w, r, err)
 	}
 }
