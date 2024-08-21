@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-"database/sql" 
+	"database/sql" 
 	"fmt"
 	"flag"
 	"log"
@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 	_ "github.com/lib/pq"
+	"github.com/kasante1/go-api/internal/data" 
 )
 
 const version = "1.0.0"
@@ -28,6 +29,7 @@ type config struct {
 type application struct{
 	config config
 	logger *log.Logger
+	models data.Models
 }
 
 func main(){
@@ -58,6 +60,7 @@ func main(){
 	app := &application{
 		config: cfg,
 		logger: logger,
+		models: data.NewModels(db),
 	}
 
 	mux := http.NewServeMux()
