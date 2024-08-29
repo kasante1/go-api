@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"time"
 	"github.com/kasante1/go-api/internal/validator"
 	"database/sql"
@@ -50,7 +51,10 @@ func (m MovieModel) Insert(movie *Movie) error {
 
 	args := []interface{}{movie.Title, movie.Year, movie.Runtime, pq.Array(movie.Genres)}
 
-	return m.DB.QueryRow(query, args...).Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel();
+
+	return m.DB.QueryRowContext(ctx, query, args...).Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
 }
 
 func (m MovieModel) Get(id int64) (*Movie, error) {
@@ -64,7 +68,10 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 	
 	var movie Movie
 
-	err := m.DB.QueryRow(query, id).Scan(
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := m.DB.QueryRowContext(ctx, query, id).Scan(
 		&movie.ID,
 		&movie.CreatedAt,
 		&movie.Title,
@@ -72,14 +79,14 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 		&movie.Runtime,
 		pq.Array(&movie.Genres),
 		&movie.Version,
-		)
+	)
 
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
-		return nil, ErrRecordNotFound
+			return nil, ErrRecordNotFound
 		default:
-		return nil, err
+			return nil, err
 		}
 	}
 
@@ -89,9 +96,11 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 func (m MovieModel) Update(movie *Movie) error {
 	query := `
 	UPDATE movies
-	SET title = $1, year = $2, runtime = $3, genres = $4, version = version + 1
-	WHERE id = $5
-	RETURNING version`
+	SET title = $1, year = $2, runtime = $3, genres = $4,
+	version = version + 1
+	WHERE id = $5 AND version = $6
+	RETURNING version
+	`
 
 	args := []interface{}{
 	movie.Title,
@@ -99,11 +108,24 @@ func (m MovieModel) Update(movie *Movie) error {
 	movie.Runtime,
 	pq.Array(movie.Genres),
 	movie.ID,
+	movie.Version,
 	}
 
-	return m.DB.QueryRow(query, args...).Scan(&movie.Version)
-}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 
+	err := m.DB.QueryRowContext(ctx, query, args...).Scan(&movie.Version)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrEditConflict
+		default:
+			return err
+		}
+	}
+	return nil
+}
 
 func (m MovieModel) Delete(id int64) error {
 
@@ -114,19 +136,21 @@ func (m MovieModel) Delete(id int64) error {
 	query := `
 	DELETE FROM movies
 	WHERE id = $1`
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 
-	result, err := m.DB.Exec(query, id)
+	result, err := m.DB.ExecContext(ctx, query, id)
 	if err != nil {
 	return err
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-	return err
+		return err
 	}
 
 	if rowsAffected == 0 {
-	return ErrRecordNotFound
+		return ErrRecordNotFound
 	}
 
 	return nil

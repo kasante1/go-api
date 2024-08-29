@@ -141,6 +141,9 @@ return
 
 err = app.models.Movies.Update(movie)
 if err != nil {
+	switch{
+	case errors.Is(err, data.ErrEditConflict):
+	}
 	app.serverErrorResponse(w, r, err)
 	return
 }
