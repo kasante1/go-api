@@ -96,20 +96,20 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 
 func (m MovieModel) Update(movie *Movie) error {
 	query := `
-	UPDATE movies
-	SET title = $1, year = $2, runtime = $3, genres = $4,
-	version = version + 1
-	WHERE id = $5 AND version = $6
-	RETURNING version
+		UPDATE movies
+		SET title = $1, year = $2, runtime = $3, genres = $4,
+		version = version + 1
+		WHERE id = $5 AND version = $6
+		RETURNING version
 	`
 
 	args := []interface{}{
-	movie.Title,
-	movie.Year,
-	movie.Runtime,
-	pq.Array(movie.Genres),
-	movie.ID,
-	movie.Version,
+		movie.Title,
+		movie.Year,
+		movie.Runtime,
+		pq.Array(movie.Genres),
+		movie.ID,
+		movie.Version,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -158,55 +158,61 @@ func (m MovieModel) Delete(id int64) error {
 }
 
 
-func (m MovieModel) GetAll(title string, genres []string, filters Filters) ([]*Movie, error) {
+func (m MovieModel) GetAll(title string, genres []string, filters Filters) ([]*Movie, Metadata, error) {
 	
 	query := fmt.Sprintf(`
-		SELECT id, created_at, title, year, runtime, genres, version
+		SELECT count(*) OVER(), id, created_at, title, year, runtime, genres, version
 		FROM movies
 		WHERE (to_tsvector('simple', title) @@ plainto_tsquery('simple', $1) OR $1 = '')
 		AND (genres @> $2 OR $2 = '{}')
-		ORDER BY %s %s, id ASC`, filters.sortColumn(), filters.sortDirection(),
+		ORDER BY %s %s, id ASC
+		LIMIT $3 OFFSET $4`, filters.sortColumn(), filters.sortDirection(),
 	)
 	
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
+
+	args := []interface{}{title, pq.Array(genres), filters.limit(), filters.offset()}
 	
-	rows, err := m.DB.QueryContext(ctx, query, title, pq.Array(genres))
+	rows, err := m.DB.QueryContext(ctx, query, args...)
 	
 	if err != nil {
-		return nil, err
+		return nil, Metadata{}, err
 	}
 	
 	defer rows.Close()
-	
+
+	totalRecords := 0
 	movies := []*Movie{}
-	
+
 	for rows.Next() {
-	
+
 		var movie Movie
-	
 		err := rows.Scan(
-			&movie.ID,
-			&movie.CreatedAt,
-			&movie.Title,
-			&movie.Year,
-			&movie.Runtime,
-			pq.Array(&movie.Genres),
-			&movie.Version,
-		)
+		&totalRecords, // Scan the count from the window function into totalRecords.
+		&movie.ID,
+		&movie.CreatedAt,
+		&movie.Title,
+		&movie.Year,
+		&movie.Runtime,
+		pq.Array(&movie.Genres),
+		&movie.Version,
+	)
+
+	if err != nil {
+		return nil, Metadata{}, err 
+	}
 	
-		
-		if err != nil {
-			return nil, err
-		}
-		
-		movies = append(movies, &movie)
+	movies = append(movies, &movie)
+
 	}
 
-	
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, Metadata{}, err 
 	}
 	
-	return movies, nil
-	}
+	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
+	
+	return movies, metadata, nil
+
+}
