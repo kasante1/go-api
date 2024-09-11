@@ -1,11 +1,11 @@
 package main
 
 import (
-	"net/http"
 	"github.com/julienschmidt/httprouter"
+	"net/http"
 )
 
-func (app *application) routes() *httprouter.Router{
+func (app *application) routes() *httprouter.Router {
 	router := httprouter.New()
 
 	router.NotFound = http.HandlerFunc(app.notFoundResponse)
@@ -21,7 +21,5 @@ func (app *application) routes() *httprouter.Router{
 	router.HandlerFunc(http.MethodDelete, "/v1/movies/:id", app.deleteMovieHandler)
 
 	return router
-
-
 
 }
