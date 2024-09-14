@@ -16,6 +16,7 @@ import (
 
 	"github.com/joho/godotenv"
 	 "strconv"
+	 "sync"
 )
 
 const version = "1.0.0"
@@ -48,7 +49,7 @@ type application struct {
 	logger *jsonlog.Logger
 	models data.Models
 	mailer mailer.Mailer
-	
+	wg sync.WaitGroup
 }
 
 func main() {
