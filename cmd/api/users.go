@@ -18,9 +18,9 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	
 	err := app.readJSON(w, r, &input)
 	if err != nil {
-	app.badRequestResponse(w, r, err)
+		app.badRequestResponse(w, r, err)
 	return
-}
+	}
 
 
 
@@ -59,9 +59,14 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 
+	err = app.mailer.Send(user.Email, "user_welcome.tmpl", user)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
 	err = app.writeJson(w, http.StatusCreated, envelope{"user": user}, nil)
 	if err != nil {
-	app.serverErrorResponse(w, r, err)
-	return
-	} 
+		app.serverErrorResponse(w, r, err)
+	}
 }
