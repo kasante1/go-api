@@ -22,9 +22,6 @@ func ValidateFilters(v *validator.Validator, f Filters) {
 	v.Check(validator.In(f.Sort, f.SortSafelist...), "sort", "invalid sort value")
 }
 
-// Check that the client-provided Sort field matches one of the entries in our safelist
-// and if it does, extract the column name from the Sort field by stripping the leading
-// hyphen character (if one exists).
 func (f Filters) sortColumn() string {
 	for _, safeValue := range f.SortSafelist {
 		if f.Sort == safeValue {
@@ -51,7 +48,6 @@ func (f Filters) offset() int {
 	return (f.Page - 1) * f.PageSize
 }
 
-// Define a new Metadata struct for holding the pagination metadata.
 type Metadata struct {
 	CurrentPage  int `json:"current_page,omitempty"`
 	PageSize     int `json:"page_size,omitempty"`
