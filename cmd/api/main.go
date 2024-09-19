@@ -58,6 +58,13 @@ func main() {
 	if err != nil {
 	  log.Fatal("Error loading .env file")
 	}
+	
+	MOVIEDB_PORT := os.Getenv("MOVIE_DB_PORT")
+	MOVIE_DB_PORT, err := strconv.Atoi(MOVIEDB_PORT)
+
+	if err != nil {
+		log.Fatal("loading movie db port failed")
+	}
 
 	MOVIE_DB_DSN := os.Getenv("MOVIE_DB_DSN")
 	SMTP_HOST := os.Getenv("SMTP_HOST")
@@ -70,7 +77,7 @@ func main() {
 	SMTP_PASSWORD := os.Getenv("SMTP_PASSWORD")
 	SMTP_SENDER := os.Getenv("SMTP_SENDER")
 
-	flag.IntVar(&cfg.port, "port", 4000, "API server port")
+	flag.IntVar(&cfg.port, "port", MOVIE_DB_PORT, "API server port")
 	flag.StringVar(&cfg.env, "env", "development", "Environment(development|staging|production)")
 
 	flag.StringVar(&cfg.db.dsn, "db-dsn", MOVIE_DB_DSN, "PostgreSQL DSN")
