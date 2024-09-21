@@ -11,3 +11,5 @@ require (
 	golang.org/x/crypto v0.27.0
 	golang.org/x/time v0.6.0
 )
+
+require github.com/tomasen/realip v0.0.0-20180522021738-f0c99a92ddce // indirect
