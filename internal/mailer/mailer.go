@@ -19,8 +19,8 @@ type Mailer struct {
 
 func New(host string, port int, username, password, sender string) Mailer {
 
-	c, err := mail.NewClient(host, mail.WithPort(port), mail.WithSMTPAuth(mail.SMTPAuthPlain), 
-	mail.WithUsername(username), mail.WithPassword(password))
+	c, err := mail.NewClient(host, mail.WithPort(port), mail.WithSMTPAuth(mail.SMTPAuthPlain),
+		mail.WithUsername(username), mail.WithPassword(password))
 
 	if err != nil {
 		log.Fatal(err)
@@ -36,25 +36,25 @@ func (m Mailer) Send(recipient, templateFile string, data interface{}) error {
 
 	tmpl, err := template.New("email").ParseFS(templateFS, "templates/"+templateFile)
 	if err != nil {
-	return err
+		return err
 	}
 
 	subject := new(bytes.Buffer)
 	err = tmpl.ExecuteTemplate(subject, "subject", data)
 	if err != nil {
-	return err
+		return err
 	}
 
 	plainBody := new(bytes.Buffer)
 	err = tmpl.ExecuteTemplate(plainBody, "plainBody", data)
 	if err != nil {
-	return err
+		return err
 	}
 
 	htmlBody := new(bytes.Buffer)
 	err = tmpl.ExecuteTemplate(htmlBody, "htmlBody", data)
 	if err != nil {
-	return err
+		return err
 	}
 
 	msg := mail.NewMsg()
@@ -70,4 +70,3 @@ func (m Mailer) Send(recipient, templateFile string, data interface{}) error {
 	}
 	return nil
 }
-

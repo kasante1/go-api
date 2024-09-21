@@ -1,18 +1,19 @@
 package main
+
 import (
 	"errors"
+	"github.com/kasante1/go-api/internal/data"
+	"github.com/kasante1/go-api/internal/validator"
 	"net/http"
 	"time"
-	"github.com/kasante1/go-api/internal/validator"
-	"github.com/kasante1/go-api/internal/data"
 )
 
 func (app *application) createAuthenticationTokenHandler(w http.ResponseWriter, r *http.Request) {
 
 	var input struct {
-		Email string `json:"email"`
+		Email    string `json:"email"`
 		Password string `json:"password"`
-		}
+	}
 
 	err := app.readJSON(w, r, &input)
 	if err != nil {
@@ -28,7 +29,7 @@ func (app *application) createAuthenticationTokenHandler(w http.ResponseWriter, 
 	if !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return
-	} 
+	}
 
 	user, err := app.models.Users.GetByEmail(input.Email)
 	if err != nil {
@@ -40,7 +41,7 @@ func (app *application) createAuthenticationTokenHandler(w http.ResponseWriter, 
 		}
 		return
 	}
-	
+
 	match, err := user.Password.Matches(input.Password)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)

@@ -1,10 +1,10 @@
 package main
+
 import (
 	"context"
-	"net/http"
 	"github.com/kasante1/go-api/internal/data"
+	"net/http"
 )
-
 
 type contextKey string
 
@@ -20,6 +20,5 @@ func (app *application) contextGetUser(r *http.Request) *data.User {
 	if !ok {
 		panic("missing user value in request context")
 	}
-return user
+	return user
 }
-
