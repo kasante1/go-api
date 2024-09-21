@@ -2,35 +2,31 @@ package main
 
 import (
 	"errors"
-	"net/http"
-	"time" 
 	"github.com/kasante1/go-api/internal/data"
 	"github.com/kasante1/go-api/internal/validator"
+	"net/http"
+	"time"
 )
 
 func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	var input struct {
-		Name string `json:"name"`
-		Email string `json:"email"`
+		Name     string `json:"name"`
+		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
-	
+
 	err := app.readJSON(w, r, &input)
 	if err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
 
-
-
-
 	user := &data.User{
-		Name: input.Name,
-		Email: input.Email,
+		Name:      input.Name,
+		Email:     input.Email,
 		Activated: false,
 	}
-
 
 	err = user.Password.Set(input.Password)
 	if err != nil {
@@ -38,21 +34,20 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	v := validator.New()
-	
-	
+
 	if data.ValidateUser(v, user); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
 
 	err = app.models.Users.Insert(user)
-		if err != nil {
+	if err != nil {
 		switch {
-			case errors.Is(err, data.ErrDuplicateEmail):
-				v.AddError("email", "a user with this email address already exists")
-				app.failedValidationResponse(w, r, v.Errors)
-			default:
-				app.serverErrorResponse(w, r, err)
+		case errors.Is(err, data.ErrDuplicateEmail):
+			v.AddError("email", "a user with this email address already exists")
+			app.failedValidationResponse(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
 
 		}
 		return
@@ -69,11 +64,11 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		app.serverErrorResponse(w, r, err)
 		return
 	}
-		
+
 	app.background(func() {
 		data := map[string]interface{}{
 			"activationToken": token.Plaintext,
-			"userID": user.ID,
+			"userID":          user.ID,
 		}
 		err = app.mailer.Send(user.Email, "user_welcome.tmpl", data)
 		if err != nil {
@@ -91,7 +86,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	var input struct {
-	TokenPlaintext string `json:"token"`
+		TokenPlaintext string `json:"token"`
 	}
 
 	err := app.readJSON(w, r, &input)
@@ -114,12 +109,12 @@ func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 			app.failedValidationResponse(w, r, v.Errors)
 		default:
 			app.serverErrorResponse(w, r, err)
-	}
-	return
+		}
+		return
 	}
 
 	user.Activated = true
-	
+
 	err = app.models.Users.Update(user)
 	if err != nil {
 		switch {
@@ -127,8 +122,8 @@ func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 			app.editConflictResponse(w, r)
 		default:
 			app.serverErrorResponse(w, r, err)
-	}
-	return
+		}
+		return
 	}
 
 	err = app.models.Tokens.DeleteAllForUser(data.ScopeActivation, user.ID)
@@ -136,7 +131,6 @@ func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 		app.serverErrorResponse(w, r, err)
 		return
 	}
-
 
 	err = app.writeJson(w, http.StatusOK, envelope{"user": user}, nil)
 	if err != nil {

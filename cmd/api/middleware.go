@@ -1,68 +1,67 @@
 package main
+
 import (
+	"errors"
+	"expvar"
 	"fmt"
+	"github.com/felixge/httpsnoop"
+	"github.com/kasante1/go-api/internal/data"
+	"github.com/kasante1/go-api/internal/validator"
+	"golang.org/x/time/rate"
 	"net"
 	"net/http"
-	"sync" 
-	"golang.org/x/time/rate"
-	"time"
-	"errors" 
-	"strings" 
-	"github.com/kasante1/go-api/internal/validator"
-	"github.com/kasante1/go-api/internal/data"
-	"expvar"
 	"strconv"
-	"github.com/felixge/httpsnoop" 
-) 
-
+	"strings"
+	"sync"
+	"time"
+)
 
 func (app *application) recoverPanic(next http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	defer func() {
-	
-	if err := recover(); err != nil {
+		defer func() {
 
-	w.Header().Set("Connection", "close")
+			if err := recover(); err != nil {
 
-	app.serverErrorResponse(w, r, fmt.Errorf("%s", err))
-	}
-	}()
+				w.Header().Set("Connection", "close")
 
-	next.ServeHTTP(w, r)
-})
+				app.serverErrorResponse(w, r, fmt.Errorf("%s", err))
+			}
+		}()
+
+		next.ServeHTTP(w, r)
+	})
 
 }
 
 func (app *application) rateLimit(next http.Handler) http.Handler {
 	type client struct {
-		limiter *rate.Limiter
+		limiter  *rate.Limiter
 		lastSeen time.Time
-		}
+	}
 
 	var (
-		mu sync.Mutex
+		mu      sync.Mutex
 		clients = make(map[string]*client)
-		)
+	)
 
-		go func() {
-			for {
-				time.Sleep(time.Minute)
-			
-				mu.Lock()
-				
-				for ip, client := range clients {
+	go func() {
+		for {
+			time.Sleep(time.Minute)
 
-					if time.Since(client.lastSeen) > 3*time.Minute {
-						delete(clients, ip)
-						}
+			mu.Lock()
 
-					}
-					mu.Unlock()
+			for ip, client := range clients {
+
+				if time.Since(client.lastSeen) > 3*time.Minute {
+					delete(clients, ip)
+				}
+
 			}
-		}()
-		
-			
+			mu.Unlock()
+		}
+	}()
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if app.config.limiter.enabled {
 			ip, _, err := net.SplitHostPort(r.RemoteAddr)
@@ -108,19 +107,19 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 			app.invalidAuthenticationTokenResponse(w, r)
 			return
 		}
-		
+
 		token := headerParts[1]
-		
+
 		v := validator.New()
-		
+
 		if data.ValidateTokenPlaintext(v, token); !v.Valid() {
 			app.invalidAuthenticationTokenResponse(w, r)
 			return
 		}
-		
+
 		user, err := app.models.Users.GetForToken(data.ScopeAuthentication, token)
 		if err != nil {
-		switch {
+			switch {
 			case errors.Is(err, data.ErrRecordNotFound):
 				app.invalidAuthenticationTokenResponse(w, r)
 			default:
@@ -144,48 +143,44 @@ func (app *application) requireAuthenticatedUser(next http.HandlerFunc) http.Han
 		}
 		next.ServeHTTP(w, r)
 
-		})
-	}
-
-
+	})
+}
 
 func (app *application) requireActivatedUser(next http.HandlerFunc) http.HandlerFunc {
-	
+
 	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	user := app.contextGetUser(r)
-	
-	if !user.Activated {
-		app.inactiveAccountResponse(w, r)
-		return
-	}
+		user := app.contextGetUser(r)
+
+		if !user.Activated {
+			app.inactiveAccountResponse(w, r)
+			return
+		}
 		next.ServeHTTP(w, r)
 	})
-		return app.requireAuthenticatedUser(fn)
-	}
-	
+	return app.requireAuthenticatedUser(fn)
+}
+
 func (app *application) requirePermission(code string, next http.HandlerFunc) http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 
-	user := app.contextGetUser(r)
+		user := app.contextGetUser(r)
 
-	permissions, err := app.models.Permissions.GetAllForUser(user.ID)
-	if err != nil {
-	app.serverErrorResponse(w, r, err)
-	return
-	}
+		permissions, err := app.models.Permissions.GetAllForUser(user.ID)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
 
-	if !permissions.Include(code) {
-		app.notPermittedResponse(w, r)
-		return
-	}
-	
+		if !permissions.Include(code) {
+			app.notPermittedResponse(w, r)
+			return
+		}
 
-	next.ServeHTTP(w, r)
+		next.ServeHTTP(w, r)
 	}
 
 	return app.requireActivatedUser(fn)
 }
-
 
 func (app *application) enableCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -193,12 +188,12 @@ func (app *application) enableCORS(next http.Handler) http.Handler {
 		w.Header().Add("Vary", "Access-Control-Request-Method")
 		origin := r.Header.Get("Origin")
 
-		if origin != ""{
-			for i := range app.config.cors.trustedOrigins{
-				if origin == app.config.cors.trustedOrigins[i]{
+		if origin != "" {
+			for i := range app.config.cors.trustedOrigins {
+				if origin == app.config.cors.trustedOrigins[i] {
 					w.Header().Set("Access-Control-Allow-Origin", origin)
 
-					if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != ""{
+					if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
 						w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, PUT, PATCH, DELETE")
 						w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
 
@@ -213,8 +208,6 @@ func (app *application) enableCORS(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
-
-
 
 func (app *application) metrics(next http.Handler) http.Handler {
 	totalRequestsReceived := expvar.NewInt("total_requests_received")

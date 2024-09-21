@@ -14,12 +14,12 @@ import (
 	"github.com/kasante1/go-api/internal/mailer"
 	_ "github.com/lib/pq"
 
+	"expvar"
 	"github.com/joho/godotenv"
-	 "strconv"
-	 "sync"
-	 "strings"
-	 "expvar"
-	 "runtime" 
+	"runtime"
+	"strconv"
+	"strings"
+	"sync"
 )
 
 const version = "1.0.0"
@@ -34,17 +34,17 @@ type config struct {
 		maxIdleTime  string
 	}
 	limiter struct {
-		rps float64
-		burst int
+		rps     float64
+		burst   int
 		enabled bool
 	}
 	smtp struct {
-		host string
-		port int
+		host     string
+		port     int
 		username string
 		password string
-		sender string
-		}
+		sender   string
+	}
 	cors struct {
 		trustedOrigins []string
 	}
@@ -55,16 +55,16 @@ type application struct {
 	logger *jsonlog.Logger
 	models data.Models
 	mailer mailer.Mailer
-	wg sync.WaitGroup
+	wg     sync.WaitGroup
 }
 
 func main() {
 	var cfg config
 	err := godotenv.Load()
 	if err != nil {
-	  log.Fatal("Error loading .env file")
+		log.Fatal("Error loading .env file")
 	}
-	
+
 	MOVIEDB_PORT := os.Getenv("MOVIE_DB_PORT")
 	MOVIE_DB_PORT, err := strconv.Atoi(MOVIEDB_PORT)
 
@@ -97,7 +97,7 @@ func main() {
 	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
 
 	flag.StringVar(&cfg.smtp.host, "smtp-host", SMTP_HOST, "SMTP host")
-	flag.IntVar(&cfg.smtp.port, "smtp-port",  SMTP_PORT, "SMTP port")
+	flag.IntVar(&cfg.smtp.port, "smtp-port", SMTP_PORT, "SMTP port")
 	flag.StringVar(&cfg.smtp.username, "smtp-username", SMTP_USERNAME, "SMTP username")
 	flag.StringVar(&cfg.smtp.password, "smtp-password", SMTP_PASSWORD, "SMTP password")
 	flag.StringVar(&cfg.smtp.sender, "smtp-sender", SMTP_SENDER, "SMTP sender")
@@ -124,14 +124,14 @@ func main() {
 
 	expvar.Publish("goroutines", expvar.Func(func() interface{} {
 		return runtime.NumGoroutine()
-		}))
+	}))
 
 	expvar.Publish("database", expvar.Func(func() interface{} {
-	return db.Stats()
+		return db.Stats()
 	}))
 
 	expvar.Publish("timestamp", expvar.Func(func() interface{} {
-	return time.Now().Unix()
+		return time.Now().Unix()
 	}))
 
 	app := &application{

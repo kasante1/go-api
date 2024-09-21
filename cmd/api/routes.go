@@ -1,9 +1,9 @@
 package main
 
 import (
+	"expvar"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
-	"expvar" 
 )
 
 func (app *application) routes() http.Handler {
