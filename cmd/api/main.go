@@ -17,6 +17,7 @@ import (
 	"github.com/joho/godotenv"
 	 "strconv"
 	 "sync"
+	 "strings"
 	 "expvar"
 	 "runtime" 
 )
@@ -44,6 +45,9 @@ type config struct {
 		password string
 		sender string
 		}
+	cors struct {
+		trustedOrigins []string
+	}
 }
 
 type application struct {
@@ -97,6 +101,11 @@ func main() {
 	flag.StringVar(&cfg.smtp.username, "smtp-username", SMTP_USERNAME, "SMTP username")
 	flag.StringVar(&cfg.smtp.password, "smtp-password", SMTP_PASSWORD, "SMTP password")
 	flag.StringVar(&cfg.smtp.sender, "smtp-sender", SMTP_SENDER, "SMTP sender")
+
+	flag.Func("cors-trusted-origins", "Trusted CORS origins (space separated)", func(val string) error {
+		cfg.cors.trustedOrigins = strings.Fields(val)
+		return nil
+	})
 
 	flag.Parse()
 
