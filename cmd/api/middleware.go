@@ -7,13 +7,13 @@ import (
 	"github.com/felixge/httpsnoop"
 	"github.com/kasante1/go-api/internal/data"
 	"github.com/kasante1/go-api/internal/validator"
+	"github.com/tomasen/realip"
 	"golang.org/x/time/rate"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-	"github.com/tomasen/realip"
 )
 
 func (app *application) recoverPanic(next http.Handler) http.Handler {
